@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <RootNamespace>csharp-wasm</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <AssemblyName>csharp-wasm</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <NativeLibrary Include="ProxyWorld_component_type.o" />
+    <NativeLibrary Include="$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o" />
+    
+  </ItemGroup>
+
+  <ItemGroup>
+    <RdXmlFile Include="rd.xml" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <CustomLinkerArg Include="-Wl,--export,_initialize" />
+    <CustomLinkerArg Include="-Wl,--no-entry" />
+    <CustomLinkerArg Include="-mexec-model=reactor" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+    <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+  </ItemGroup>
+
+  <Target Name="CheckWasmSdks">
+    <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
+           Condition="'$(EMSDK)' == ''" />
+  </Target>
+  
+  <Target Name="CompileCabiRealloc" BeforeTargets="IlcCompile" DependsOnTargets="CheckWasmSdks" 
+          Inputs="$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.c"
+          Outputs="$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o"
+          >
+    <Exec Command="emcc.bat &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.c&quot; -c -o &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o&quot;"/>
+  </Target>
+</Project>

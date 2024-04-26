@@ -1,0 +1,17 @@
+spin_manifest_version = 2
+
+[application]
+name = "hello"
+version = "0.1.0"
+authors = ["Joel Dice <joel.dice@gmail.com>"]
+description = ""
+
+[[trigger.http]]
+route = "/..."
+component = "hello"
+
+[component.hello]
+source = "target/stripped.wasm"
+allowed_outbound_hosts = []
+[component.hello.build]
+command = "bash build.sh"

@@ -1,0 +1,9 @@
+Proxy*.cs
+ProxyWorld_cabi_realloc.c
+*.o
+.packages
+.spin
+bin
+obj
+target
+*.wasm
