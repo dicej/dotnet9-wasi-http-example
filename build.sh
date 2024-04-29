@@ -4,7 +4,7 @@ wit-bindgen c-sharp -w proxy -r native-aot wit
 
 dotnet publish App.csproj \
        -r wasi-wasm \
-       -c Debug \
+       -c Release \
        -p:PlatformTarget=AnyCPU \
        -p:MSBuildEnableWorkloadResolver=false \
        --self-contained \
