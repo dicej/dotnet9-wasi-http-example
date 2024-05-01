@@ -4,6 +4,8 @@
 
 Currently, this only builds on Windows.  Linux support coming soon(ish).
 
+Prerequisites:
+
 - Git-Bash
 - curl
 - dotnet 9.0.100-preview.3.24204.13 or later
