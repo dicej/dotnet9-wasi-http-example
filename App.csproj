@@ -30,19 +30,19 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
-    <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+    <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-dev" />
+    <PackageReference Include="runtime.linux-arm64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-dev" />
   </ItemGroup>
 
   <Target Name="CheckWasmSdks">
-    <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-           Condition="'$(EMSDK)' == ''" />
+    <Error Text="WASI_SDK_PATH not set; please install WASI-SDK 22 and set WASI_SDK_PATH to the path where it is installed."
+           Condition="'$(WASI_SDK_PATH)' == ''" />
   </Target>
   
   <Target Name="CompileCabiRealloc" BeforeTargets="IlcCompile" DependsOnTargets="CheckWasmSdks" 
           Inputs="$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.c"
           Outputs="$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o"
           >
-    <Exec Command="emcc.bat &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.c&quot; -c -o &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o&quot;"/>
+    <Exec Command="$(WASI_SDK_PATH)/bin/clang &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.c&quot; -c -o &quot;$(MSBuildProjectDirectory)/ProxyWorld_cabi_realloc.o&quot;"/>
   </Target>
 </Project>
