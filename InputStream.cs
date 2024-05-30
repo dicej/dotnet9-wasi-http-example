@@ -32,7 +32,6 @@ class InputStream: Stream
     }
     
     protected override void Dispose(bool disposing) {
-        Console.WriteLine("disposing stream");
         stream.Dispose();
     }
 

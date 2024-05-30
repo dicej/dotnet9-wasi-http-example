@@ -18,19 +18,15 @@ class PollTaskScheduler : TaskScheduler {
     internal void Run()
     {
         while (this.tasks.Count > 0) {
-                Console.WriteLine($"task count: {this.tasks.Count}");                
             var tasks = this.tasks;
             this.tasks = new();
             foreach (var task in tasks) {
-                Console.WriteLine("try execute");
                 base.TryExecuteTask(task);
-                Console.WriteLine("try execute complete");                
                 if (!task.IsCompleted) {
                     this.tasks.Add(task);
                 }
             }
             
-                Console.WriteLine($"pollable count: {this.pollables.Count}");    
             if (this.pollables.Count > 0) {
                 var pollables = this.pollables;
                 this.pollables = new();

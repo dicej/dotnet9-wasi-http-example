@@ -78,7 +78,7 @@ class OutputStream: Stream
                     Array.Copy(bytes, offset, copy, 0, min);
                     stream.Write(copy);
                 }
-                offset += count;
+                offset += min;
             }
         }
     }

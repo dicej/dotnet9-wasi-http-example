@@ -7,6 +7,8 @@ namespace ProxyWorld.wit.exports.wasi.http.v0_2_0;
 
 public class IncomingHandlerImpl: IIncomingHandler
 {
+    /// <summary>Handle the specified incoming HTTP request and send a response
+    /// via `responseOut`.</summary>
     public static void Handle(ITypes.IncomingRequest request, ITypes.ResponseOutparam responseOut)
     {
         PollTaskScheduler.Factory.StartNew(async () => {
@@ -15,6 +17,8 @@ public class IncomingHandlerImpl: IIncomingHandler
         PollTaskScheduler.Instance.Run();
     }
 
+    /// <summary>Handle the specified incoming HTTP request and send a response
+    /// via `responseOut`.</summary>
     static async Task HandleAsync(ITypes.IncomingRequest request, ITypes.ResponseOutparam responseOut)
     {
         var method = request.Method();
@@ -44,14 +48,52 @@ public class IncomingHandlerImpl: IIncomingHandler
             using (var sink = new OutputStream(body.Write().AsOk)) {
                 var tasks = new List<Task<(string, string)>>();
                 foreach (var url in urls) {
-                    tasks.Add(Sha256(url));
+                    tasks.Add(Sha256Async(url));
                 }
                 await foreach (var task in WhenEach.Iterate<Task<(string, string)>>(tasks)) {
                     (var url, var sha) = await task;
                     await sink.WriteAsync(Encoding.UTF8.GetBytes($"{url}: {sha}\n"));
                 }
             }
+            ITypes.OutgoingBody.Finish(body, Option<ITypes.Fields>.None);
+            
+        } else if (method.Tag == ITypes.Method.POST && path.Equals("/echo")) {
+            // Echo the request body back to the client without arbitrary
+            // buffering.
+
+            var responseHeaders = new List<(string, byte[])>();
+            foreach ((var key, var value) in headers) {
+                if (key.Equals("content-type")) {
+                    responseHeaders.Add((key, value));
+                }
+            }
+            var response = new ITypes.OutgoingResponse(ITypes.Fields.FromList(responseHeaders).AsOk);
+            var responseBody = response.Body().AsOk;
+            ITypes.ResponseOutparam.Set(responseOut, Result<ITypes.OutgoingResponse, ITypes.ErrorCode>.ok(response));
+
+            var requestBody = request.Consume().AsOk;
+            try {
+                using (var stream = new InputStream(requestBody.Stream().AsOk)) {
+                    using (var sink = new OutputStream(responseBody.Write().AsOk)) {
+                        var buffer = new byte[16 * 1024];
+                        while (true) {
+                            var count = await stream.ReadAsync(buffer);
+                            if (count == 0) {
+                                break;
+                            } else {
+                                await sink.WriteAsync(buffer, 0, count);
+                            }
+                        }
+                    }
+                }
+            } finally {
+                ITypes.IncomingBody.Finish(requestBody);
+                ITypes.OutgoingBody.Finish(responseBody, Option<ITypes.Fields>.None);
+            }
+            
         } else {
+            // Unsupported method and path; send 400 Bad Request.
+            
             var response = new ITypes.OutgoingResponse(ITypes.Fields.FromList(new()).AsOk);
             response.SetStatusCode(400);
             var body = response.Body().AsOk;
@@ -65,7 +107,7 @@ public class IncomingHandlerImpl: IIncomingHandler
     ///
     /// <remarks>This returns a tuple of the original URL and either the
     /// hex-encoded hash or an error message.</remarks>
-    static async Task<(string, string)> Sha256(string url)
+    static async Task<(string, string)> Sha256Async(string url)
     {
         var uri = new Uri(url);
 
@@ -87,7 +129,7 @@ public class IncomingHandlerImpl: IIncomingHandler
         request.SetAuthority(new(uri.Authority));
         request.SetPathWithQuery(new(uri.PathAndQuery));
 
-        var response = await Send(request);
+        var response = await SendAsync(request);
         var status = response.Status();
         if (status < 200 || status > 299) {
             return (url, $"unexpected status: {status}");
@@ -104,7 +146,6 @@ public class IncomingHandlerImpl: IIncomingHandler
                         var hash = sha.GetHash();
                         hash.CopyTo(buffer, 0);
                         var hashString = BitConverter.ToString(buffer, 0, hash.Count).Replace("-", "");
-                        //Task.WaitAll(new Task[0]);
                         return (url, hashString);
                     } else {
                         sha.AddData(buffer, 0, (uint) count);
@@ -116,7 +157,8 @@ public class IncomingHandlerImpl: IIncomingHandler
         }
     }
 
-    static async Task<ITypes.IncomingResponse> Send(ITypes.OutgoingRequest request)
+    /// <summary>Send the specified request and return the response.</summary>
+    static async Task<ITypes.IncomingResponse> SendAsync(ITypes.OutgoingRequest request)
     {
         var future = OutgoingHandlerInterop.Handle(request, Option<ITypes.RequestOptions>.None).AsOk;
 
