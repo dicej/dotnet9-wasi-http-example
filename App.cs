@@ -9,15 +9,10 @@ public class IncomingHandlerImpl: IIncomingHandler
 {
     public static void Handle(ITypes.IncomingRequest request, ITypes.ResponseOutparam responseOut)
     {
-            try {
         PollTaskScheduler.Factory.StartNew(async () => {
             await HandleAsync(request, responseOut);
         });
         PollTaskScheduler.Instance.Run();
-            } catch (Exception e) {
-                Console.WriteLine("caught {e}");
-                throw e;
-            }
     }
 
     static async Task HandleAsync(ITypes.IncomingRequest request, ITypes.ResponseOutparam responseOut)
@@ -46,23 +41,15 @@ public class IncomingHandlerImpl: IIncomingHandler
             var body = response.Body().AsOk;
             ITypes.ResponseOutparam.Set(responseOut, Result<ITypes.OutgoingResponse, ITypes.ErrorCode>.ok(response));
 
-            try {
             using (var sink = new OutputStream(body.Write().AsOk)) {
                 var tasks = new List<Task<(string, string)>>();
                 foreach (var url in urls) {
                     tasks.Add(Sha256(url));
                 }
-                    Console.WriteLine("enter await foreach");                
-                await foreach (var task in Task.WhenEach(tasks)) {
-                    Console.WriteLine("task ready");                    
+                await foreach (var task in WhenEach.Iterate<Task<(string, string)>>(tasks)) {
                     (var url, var sha) = await task;
-                    Console.WriteLine($"url is {url}; sha is {sha}");
                     await sink.WriteAsync(Encoding.UTF8.GetBytes($"{url}: {sha}\n"));
                 }
-            }
-            } catch (Exception e) {
-                Console.WriteLine("caught {e}");
-                throw e;
             }
         } else {
             var response = new ITypes.OutgoingResponse(ITypes.Fields.FromList(new()).AsOk);
@@ -106,22 +93,18 @@ public class IncomingHandlerImpl: IIncomingHandler
             return (url, $"unexpected status: {status}");
         }
 
-            try {
-        Console.WriteLine("dicej sha create");
         var sha = new Sha256();
-        Console.WriteLine("dicej sha create complete");        
         var body = response.Consume().AsOk;
         try {
             using (var stream = new InputStream(body.Stream().AsOk)) {
                 var buffer = new byte[16 * 1024];
                 while (true) {
                     var count = await stream.ReadAsync(buffer);
-                    Console.WriteLine($"got {count}");
                     if (count == 0) {
                         var hash = sha.GetHash();
                         hash.CopyTo(buffer, 0);
-                        var hashString = BitConverter.ToString(buffer, hash.Count).Replace("-", "");
-                        Console.WriteLine("returning");
+                        var hashString = BitConverter.ToString(buffer, 0, hash.Count).Replace("-", "");
+                        //Task.WaitAll(new Task[0]);
                         return (url, hashString);
                     } else {
                         sha.AddData(buffer, 0, (uint) count);
@@ -129,14 +112,8 @@ public class IncomingHandlerImpl: IIncomingHandler
                 }
             }
         } finally {
-            Console.WriteLine("finish");
             ITypes.IncomingBody.Finish(body);
-            Console.WriteLine("finished");
         }
-            } catch (Exception e) {
-                Console.WriteLine("caught {e}");
-                throw e;
-            }
     }
 
     static async Task<ITypes.IncomingResponse> Send(ITypes.OutgoingRequest request)
