@@ -80,16 +80,16 @@ class InputStream : Stream
             }
             else if (this.buffer == null)
             {
-                // TODO: should we add a special case to the bindings generator
-                // to allow passing a buffer to IStreams.InputStream.Read and
-                // avoid the extra copy?
-                var result = stream.Read(16 * 1024);
-                if (result.IsOk)
+                try
                 {
-                    var buffer = result.AsOk;
+                    // TODO: should we add a special case to the bindings generator
+                    // to allow passing a buffer to IStreams.InputStream.Read and
+                    // avoid the extra copy?
+                    var result = stream.Read(16 * 1024);
+                    var buffer = result;
                     if (buffer.Length == 0)
                     {
-                        await PollTaskScheduler.Instance.Register(stream.Subscribe());
+                        await WasiEventLoop.Register(stream.Subscribe()).ConfigureAwait(false);
                     }
                     else
                     {
@@ -97,14 +97,17 @@ class InputStream : Stream
                         this.offset = 0;
                     }
                 }
-                else if (result.AsErr.Tag == IStreams.StreamError.CLOSED)
+                catch (WitException e)
                 {
-                    closed = true;
-                    return 0;
-                }
-                else
-                {
-                    throw new Exception("I/O error");
+                    if (((IStreams.StreamError)e.Value).Tag == IStreams.StreamError.CLOSED)
+                    {
+                        closed = true;
+                        return 0;
+                    }
+                    else
+                    {
+                        throw e;
+                    }
                 }
             }
             else

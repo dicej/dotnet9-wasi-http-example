@@ -1,6 +1,6 @@
 set -eo pipefail
 
-wit-bindgen c-sharp -w proxy -r native-aot wit
+cargo run --no-default-features --features csharp-naot --release --manifest-path ~/p/wit-bindgen/Cargo.toml -- c-sharp -w proxy -r native-aot wit
 
 dotnet publish App.csproj \
        -r wasi-wasm \

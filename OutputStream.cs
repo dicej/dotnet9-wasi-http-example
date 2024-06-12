@@ -73,10 +73,10 @@ class OutputStream : Stream
         var flushing = false;
         while (true)
         {
-            var count = (int)stream.CheckWrite().AsOk;
+            var count = (int)stream.CheckWrite();
             if (count == 0)
             {
-                await PollTaskScheduler.Instance.Register(stream.Subscribe());
+                await WasiEventLoop.Register(stream.Subscribe());
             }
             else if (offset == limit)
             {
